@@ -1,0 +1,128 @@
+/* --- Global Reset and Font (White Background) --- */
+body {
+  background-color: #fcfcfc; 
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+  overflow: auto; /* Re-enable scrolling if the user resizes the window, safer than hidden */
+}
+
+/* --- The Main Card Container (REMOVED BOX STYLES) --- */
+.patient-card {
+  width: 900px; /* Wider for a desktop 'form on a page' feel */
+  height: auto; /* Allows content to define height (no fixed 85vh) */
+  margin: 50px auto; /* Generous top/bottom margin */
+  padding: 0; /* Remove padding inside the card */
+  
+  /* CRITICAL CHANGES TO REMOVE THE BOX */
+  background-color: transparent; 
+  box-shadow: none; 
+  border: none;
+  border-radius: 0; 
+  /* End of box removal */
+  
+  display: flex; 
+  flex-direction: column;
+}
+
+/* --- Header Styling (Now acts as the main page title) --- */
+.patient-card h2 {
+  text-align: left;
+  color: #212529; 
+  font-size: 32px; /* Larger title */
+  font-weight: 700; 
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  margin-bottom: 30px; 
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e0e0e0; /* Clean, clear separator under the title */
+}
+
+/* --- NEW GRID CONTAINER for Two Columns (Remains the same structure) --- */
+.form-grid {
+    display: grid;
+    /* PUSH RIGHT: Remains 30% / 70% split */
+    grid-template-columns: 30% 70%; 
+    gap: 40px; /* Slightly increased gap for spacious feel */
+    flex-grow: 1; 
+    padding-bottom: 30px; 
+}
+
+/* --- Detail Lines (for Name, Age, Gender) --- */
+.patient-detail {
+  display: flex;
+  justify-content: space-between; 
+  align-items: center; 
+  padding: 10px 0; /* Increased vertical spacing for neatness */
+}
+
+/* --- Label (e.g., "Name:") --- */
+.patient-detail label {
+  font-weight: 500; 
+  color: #495057; 
+  font-size: 16px; /* Slightly larger text */
+  min-width: 140px; /* Wider min-width for better left alignment */
+}
+
+/* --- Input Fields (Name, Age, Gender) --- */
+.detail-input, .detail-select {
+  font-size: 16px; 
+  color: #212529; 
+  padding: 10px; 
+  border: 1px solid #ced4da; /* Slightly stronger border */
+  border-radius: 4px; 
+  background-color: #ffffff; /* White input background on the white page */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* Very subtle shadow on inputs */
+  width: 100%; 
+}
+
+.detail-input:focus, .detail-select:focus {
+    border-color: #007bff; 
+    box-shadow: 0 0 0 0.15rem rgba(0, 123, 255, 0.2); 
+    background-color: #ffffff; 
+}
+
+/* --- Textarea Styling (Full Width in its column) --- */
+.column-right .patient-detail.full-width {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0;
+    margin-bottom: 15px; 
+    height: 180px; /* Fixed height for each textarea section (adjust as needed) */
+}
+
+.column-right .patient-detail.full-width label {
+    margin-bottom: 8px;
+    font-size: 17px; 
+    font-weight: 600; 
+    color: #343a40;
+    width: 100%;
+}
+
+.detail-textarea {
+  font-size: 16px; 
+  width: 100%;
+  height: 100%; 
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  resize: vertical; /* Allowing vertical resize helps user if they need more space */
+  background-color: #ffffff; 
+  color: #212529;
+}
+
+/* --- Submit Button Styling --- */
+.add-patient-button {
+  width: 100%;
+  padding: 15px;
+  margin-top: 30px; /* Adjusted spacing for the button at the bottom of the page content */
+  border-radius: 4px; 
+  background-color: #007bff; 
+  font-size: 19px; 
+  font-weight: 600;
+  color: white;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.add-patient-button:hover {
+  background-color: #0056b3;
+}
