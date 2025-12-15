@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import WaveformCanvas from "../../components/WaveformCanvas";
+import AnnotatedWaveformCanvas from "../../components/AnnotatedWaveformCanvas";
 import LevelMeter from "../../components/LevelMeter";
+import RealtimeAudioCapture from "../../utils/realtimeAudioCapture";
 import "./PhonationAssessment.css";
 
 /**
@@ -23,6 +24,7 @@ const PhonationAssessment = () => {
   const navigate = useNavigate();
   const [permissionGranted, setPermissionGranted] = useState(null);
   const [patientType, setPatientType] = useState("adult_female"); // adult_male, adult_female, child
+  const [activeRecordingId, setActiveRecordingId] = useState(null); // Track which vowel is being recorded
   
   const [stateMap, setStateMap] = useState(() =>
     VOWEL_ITEMS.reduce((acc, it) => {
@@ -45,6 +47,8 @@ const PhonationAssessment = () => {
   const chunksRef = useRef([]);
   const activeItemRef = useRef(null);
   const timerRef = useRef(null);
+  const waveformCanvasRefsRef = useRef({});
+  const audioCaptureRef = useRef(null);
   const [timer, setTimer] = useState(0);
 
   // Reference ranges by patient type
@@ -183,6 +187,11 @@ const PhonationAssessment = () => {
     };
 
     mediaRecorderRef.current.onstop = async () => {
+      // Stop real-time capture
+      if (audioCaptureRef.current) {
+        audioCaptureRef.current.stop();
+      }
+
       const blob = new Blob(chunksRef.current, { type: "audio/webm" });
       const url = URL.createObjectURL(blob);
 
@@ -203,6 +212,11 @@ const PhonationAssessment = () => {
         },
       }));
 
+      // Reset waveform canvas for this specific vowel
+      if (waveformCanvasRefsRef.current[itemId]) {
+        waveformCanvasRefsRef.current[itemId].resetLiveWaveform();
+      }
+
       // Upload to backend
       uploadToBackend(itemId, blob);
 
@@ -212,6 +226,22 @@ const PhonationAssessment = () => {
     };
 
     mediaRecorderRef.current.start();
+
+    // Start real-time audio capture for live waveform
+    try {
+      audioCaptureRef.current = new RealtimeAudioCapture((audioSamples) => {
+        // Update only the current vowel's waveform
+        const currentWaveformRef = waveformCanvasRefsRef.current[itemId];
+        if (currentWaveformRef && audioSamples.length > 0) {
+          currentWaveformRef.updateLiveWaveform(audioSamples);
+        }
+      }, 16000);
+      
+      await audioCaptureRef.current.start(streamRef.current);
+    } catch (err) {
+      console.error("Error starting real-time audio capture:", err);
+    }
+
     setStateMap((prev) => ({ ...prev, [itemId]: { ...prev[itemId], recording: true } }));
     setTimer(0);
     timerRef.current = setInterval(() => setTimer((t) => t + 0.1), 100);
@@ -231,8 +261,33 @@ const PhonationAssessment = () => {
    */
   const toggleRecording = (id) => {
     const cur = stateMap[id]?.recording;
-    if (cur) stopRecording();
-    else startRecording(id);
+    if (cur) {
+      // Stop recording the current vowel
+      stopRecording();
+    } else {
+      // If a different vowel is being recorded, stop it first
+      if (activeRecordingId && activeRecordingId !== id) {
+        const prevRecording = stateMap[activeRecordingId]?.recording;
+        if (prevRecording) {
+          stopRecording();
+          // Small delay to ensure proper cleanup
+          setTimeout(() => {
+            setActiveRecordingId(id);
+            startRecording(id);
+          }, 100);
+          return;
+        }
+      }
+      setActiveRecordingId(id); // Set when starting
+      startRecording(id);
+    }
+  };
+
+  /**
+   * Close the recording layout and return to grid view
+   */
+  const closeRecordingLayout = () => {
+    setActiveRecordingId(null);
   };
 
   /**
@@ -258,6 +313,42 @@ const PhonationAssessment = () => {
   const getBestMPD = () => {
     const durations = VOWEL_ITEMS.map((item) => stateMap[item.id]?.duration || 0);
     return durations.length > 0 ? Math.max(...durations) : 0;
+  };
+
+  /**
+   * Save waveform as PNG image
+   */
+  const saveWaveformAsImage = (itemId) => {
+    const canvasRef = waveformCanvasRefsRef.current[itemId];
+    if (!canvasRef || !canvasRef.getLiveWaveform) {
+      console.error("No canvas reference found for vowel:", itemId);
+      return;
+    }
+    
+    // Export the waveform canvas
+    if (canvasRef.exportToBase64) {
+      canvasRef.exportToBase64();
+    }
+  };
+
+  /**
+   * Save waveform as audio file
+   */
+  const saveWaveformAsAudio = (itemId) => {
+    const meta = stateMap[itemId];
+    if (!meta?.audioUrl || !meta?.blob) {
+      alert("No audio recording found for this vowel");
+      return;
+    }
+
+    // Create download link for audio
+    const link = document.createElement("a");
+    link.href = meta.audioUrl;
+    const vowelLabel = VOWEL_ITEMS.find((v) => v.id === itemId)?.label || itemId;
+    link.download = `phonation_${vowelLabel}_${Date.now()}.wav`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   /**
@@ -296,9 +387,9 @@ const PhonationAssessment = () => {
               </select>
             </div>
             <div className="nav-progress">
-              <span className="progress-label">Step 1 of 5</span>
+              <span className="progress-label">Step 2 of 6</span>
               <div className="progress-bar">
-                <div className="progress-fill" style={{ width: "20%" }} />
+                <div className="progress-fill" style={{ width: "33.33%" }} />
               </div>
             </div>
           </div>
@@ -343,68 +434,198 @@ const PhonationAssessment = () => {
           <h2 className="section-title">Vowel Recording</h2>
           <p className="section-subtitle">Record all 4 vowels to proceed to next assessment</p>
         </div>
-        <div className="vowel-grid">
-          {VOWEL_ITEMS.map((item, idx) => {
-            const meta = stateMap[item.id] || {};
-            return (
-              <div
-                key={item.id}
-                className="vowel-card glass-card"
-                style={{ animationDelay: `${idx * 100}ms` }}
-              >
-                <div className="card-header">
-                  <h3 className="card-vowel-label">{item.label}</h3>
-                  <div className="card-timer">
-                    {meta.recording ? (
-                      <>
-                        <div className="rec-dot" />
-                        {timer.toFixed(1)}s
-                      </>
-                    ) : meta.duration ? (
-                      `${meta.duration}s`
-                    ) : (
-                      "—"
-                    )}
-                  </div>
-                </div>
 
-                {/* Waveform Display */}
-                <div className="card-waveform">
-                  <WaveformCanvas
-                    waveform={meta.waveform || []}
-                    samplingRate={meta.samplingRate || 16000}
-                    isRecording={meta.recording}
+        {activeRecordingId ? (
+          // SPLIT LAYOUT: Recording view
+          <div className="recording-layout">
+            {/* LEFT SIDEBAR: Small vowel cards */}
+            <div className="recording-left-panel">
+              <div className="vowel-compact-list">
+                {VOWEL_ITEMS.map((item) => {
+                  const meta = stateMap[item.id] || {};
+                  const isActive = activeRecordingId === item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`vowel-compact-card ${isActive ? "active" : ""}`}
+                    >
+                      <div className="compact-header">
+                        <h4 className="compact-label">{item.label}</h4>
+                        <div className="compact-timer">
+                          {meta.recording ? (
+                            <>
+                              <div className="rec-dot-small" />
+                              {timer.toFixed(1)}s
+                            </>
+                          ) : meta.duration ? (
+                            `${meta.duration}s`
+                          ) : (
+                            "—"
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="compact-controls">
+                        <button
+                          className={`btn-record-compact ${meta.recording ? "recording" : ""} ${meta.duration > 0 ? "completed" : ""}`}
+                          onClick={() => toggleRecording(item.id)}
+                        >
+                          {meta.recording ? "🛑" : meta.duration > 0 ? "🔄" : "🎤"}
+                        </button>
+                        <button
+                          className={`btn-play-compact ${meta.audioUrl ? "active" : "disabled"}`}
+                          disabled={!meta.audioUrl}
+                          onClick={() => handlePlay(item.id)}
+                        >
+                          ▶️
+                        </button>
+                      </div>
+
+                      {meta.duration > 0 && (
+                        <div className="compact-status">
+                          <span className="status-check">✓</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* RIGHT PANEL: Large waveform display */}
+            <div className="recording-right-panel">
+              <div className="large-waveform-container">
+                <div className="waveform-title">
+                  {stateMap[activeRecordingId]?.recording ? (
+                    <>
+                      <span className="rec-dot-large" />
+                      Recording {VOWEL_ITEMS.find(i => i.id === activeRecordingId)?.label}
+                    </>
+                  ) : (
+                    `Waveform: ${VOWEL_ITEMS.find(i => i.id === activeRecordingId)?.label}`
+                  )}
+                </div>
+                <div className="large-waveform-display">
+                  <AnnotatedWaveformCanvas
+                    ref={(ref) => {
+                      if (ref) waveformCanvasRefsRef.current[activeRecordingId] = ref;
+                    }}
+                    waveform={stateMap[activeRecordingId]?.waveform || []}
+                    samplingRate={stateMap[activeRecordingId]?.samplingRate || 16000}
+                    isRecording={stateMap[activeRecordingId]?.recording}
                   />
                 </div>
 
-                {/* Controls */}
-                <div className="card-controls">
-                  <button
-                    className={`btn-record ${meta.recording ? "recording" : ""} ${meta.duration > 0 ? "completed" : ""}`}
-                    onClick={() => toggleRecording(item.id)}
-                  >
-                    {meta.recording ? "🛑 Stop" : meta.duration > 0 ? "🔄 Re-record" : "🎤 Record"}
-                  </button>
-                  <button
-                    className={`btn-play ${meta.audioUrl ? "active" : "disabled"}`}
-                    disabled={!meta.audioUrl}
-                    onClick={() => handlePlay(item.id)}
-                  >
-                    ▶️ Play
-                  </button>
-                </div>
-
-                {/* Status */}
-                {meta.duration > 0 && (
-                  <div className="card-status">
-                    <span className="status-badge ready">✓ Ready</span>
-                    <span className="status-value">{meta.duration}s recorded</span>
+                {/* Save Options (visible after recording) */}
+                {stateMap[activeRecordingId]?.duration > 0 && (
+                  <div className="large-waveform-save-options">
+                    <button
+                      className="btn-save-audio"
+                      onClick={() => saveWaveformAsAudio(activeRecordingId)}
+                      title="Download audio file"
+                    >
+                      💾 Save Audio
+                    </button>
+                    <button
+                      className="btn-save-image"
+                      onClick={() => saveWaveformAsImage(activeRecordingId)}
+                      title="Export waveform as image"
+                    >
+                      🖼️ Save Waveform
+                    </button>
                   </div>
                 )}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          </div>
+        ) : (
+          // NORMAL LAYOUT: Grid view
+          <div className="vowel-grid">
+            {VOWEL_ITEMS.map((item, idx) => {
+              const meta = stateMap[item.id] || {};
+              return (
+                <div
+                  key={item.id}
+                  className="vowel-card glass-card"
+                  style={{ animationDelay: `${idx * 100}ms` }}
+                >
+                  <div className="card-header">
+                    <h3 className="card-vowel-label">{item.label}</h3>
+                    <div className="card-timer">
+                      {meta.recording ? (
+                        <>
+                          <div className="rec-dot" />
+                          {timer.toFixed(1)}s
+                        </>
+                      ) : meta.duration ? (
+                        `${meta.duration}s`
+                      ) : (
+                        "—"
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Waveform Display */}
+                  <div className="card-waveform">
+                    <AnnotatedWaveformCanvas
+                      ref={(ref) => {
+                        if (ref) waveformCanvasRefsRef.current[item.id] = ref;
+                      }}
+                      waveform={meta.waveform || []}
+                      samplingRate={meta.samplingRate || 16000}
+                      isRecording={meta.recording}
+                    />
+                  </div>
+
+                  {/* Controls */}
+                  <div className="card-controls">
+                    <button
+                      className={`btn-record ${meta.recording ? "recording" : ""} ${meta.duration > 0 ? "completed" : ""}`}
+                      onClick={() => toggleRecording(item.id)}
+                    >
+                      {meta.recording ? "🛑 Stop" : meta.duration > 0 ? "🔄 Re-record" : "🎤 Record"}
+                    </button>
+                    <button
+                      className={`btn-play ${meta.audioUrl ? "active" : "disabled"}`}
+                      disabled={!meta.audioUrl}
+                      onClick={() => handlePlay(item.id)}
+                    >
+                      ▶️ Play
+                    </button>
+                  </div>
+
+                  {/* Save Options (visible after recording) */}
+                  {meta.duration > 0 && (
+                    <div className="card-save-options">
+                      <button
+                        className="btn-save-audio"
+                        onClick={() => saveWaveformAsAudio(item.id)}
+                        title="Download audio file"
+                      >
+                        💾 Save Audio
+                      </button>
+                      <button
+                        className="btn-save-image"
+                        onClick={() => saveWaveformAsImage(item.id)}
+                        title="Export waveform as image"
+                      >
+                        🖼️ Save Waveform
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Status */}
+                  {meta.duration > 0 && (
+                    <div className="card-status">
+                      <span className="status-badge ready">✓ Ready</span>
+                      <span className="status-value">{meta.duration}s recorded</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* MPD RESULTS SECTION */}

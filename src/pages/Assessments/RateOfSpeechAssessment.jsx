@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import WaveformCanvas from "../../components/WaveformCanvas";
+import AnnotatedWaveformCanvas from "../../components/AnnotatedWaveformCanvas";
 import "./RateOfSpeechAssessment.css";
 
 /**
@@ -388,9 +388,9 @@ const RateOfSpeechAssessment = () => {
         </div>
         <div className="navbar-right">
           <div className="nav-progress">
-            <span className="progress-label">Step 4 of 5</span>
+            <span className="progress-label">Step 4 of 6</span>
             <div className="progress-bar">
-              <div className="progress-fill" style={{ width: "80%" }} />
+              <div className="progress-fill" style={{ width: "66.67%" }} />
             </div>
           </div>
         </div>
@@ -467,10 +467,9 @@ const RateOfSpeechAssessment = () => {
             {/* Waveform */}
             {rainbowRecording.waveform.length > 0 && (
               <div className="card-waveform">
-                <WaveformCanvas
+                <AnnotatedWaveformCanvas
                   waveform={rainbowRecording.waveform}
                   samplingRate={rainbowRecording.samplingRate}
-                  isRecording={rainbowRecording.recording}
                 />
               </div>
             )}
@@ -635,10 +634,9 @@ const RateOfSpeechAssessment = () => {
             {/* Waveform */}
             {conversationalRecording.waveform.length > 0 && (
               <div className="card-waveform">
-                <WaveformCanvas
+                <AnnotatedWaveformCanvas
                   waveform={conversationalRecording.waveform}
                   samplingRate={conversationalRecording.samplingRate}
-                  isRecording={conversationalRecording.recording}
                 />
               </div>
             )}

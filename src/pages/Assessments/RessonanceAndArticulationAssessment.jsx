@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import WaveformCanvas from "../../components/WaveformCanvas";
+import AnnotatedWaveformCanvas from "../../components/AnnotatedWaveformCanvas";
 import "./RessonanceAndArticulationAssessment.css";
 
 /**
@@ -606,9 +606,9 @@ const RessonanceAndArticulationAssessment = () => {
           </div>
           <div className="navbar-right">
             <div className="nav-progress">
-              <span className="progress-label">Step 3 of 5</span>
+              <span className="progress-label">Step 3 of 6</span>
               <div className="progress-bar">
-                <div className="progress-fill" style={{ width: "60%" }} />
+                <div className="progress-fill" style={{ width: "50%" }} />
               </div>
             </div>
           </div>
@@ -677,10 +677,9 @@ const RessonanceAndArticulationAssessment = () => {
             </div>
 
             <div className="card-waveform">
-              <WaveformCanvas
+              <AnnotatedWaveformCanvas
                 waveform={resonanceRecording.waveform || []}
                 samplingRate={resonanceRecording.samplingRate || 16000}
-                isRecording={resonanceRecording.recording}
               />
             </div>
 
@@ -791,10 +790,9 @@ const RessonanceAndArticulationAssessment = () => {
                   </div>
 
                   <div className="card-waveform">
-                    <WaveformCanvas
+                    <AnnotatedWaveformCanvas
                       waveform={meta.waveform || []}
                       samplingRate={meta.samplingRate || 16000}
-                      isRecording={meta.recording}
                     />
                   </div>
 
@@ -869,10 +867,9 @@ const RessonanceAndArticulationAssessment = () => {
             </div>
 
             <div className="card-waveform">
-              <WaveformCanvas
+              <AnnotatedWaveformCanvas
                 waveform={smrRecording.waveform || []}
                 samplingRate={smrRecording.samplingRate || 16000}
-                isRecording={smrRecording.recording}
               />
             </div>
 

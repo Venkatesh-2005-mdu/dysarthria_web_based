@@ -40,6 +40,14 @@ export default function RespiratoryAssessment() {
           </button>
           <h2 className="navbar-title">Respiratory Assessment</h2>
         </div>
+        <div className="navbar-right">
+          <div className="nav-progress">
+            <span className="progress-label">Step 1 of 6</span>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: "16.67%" }} />
+            </div>
+          </div>
+        </div>
       </nav>
 
       {/* Breadcrumb Navigation */}

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import WaveformCanvas from "../../components/WaveformCanvas";
+import AnnotatedWaveformCanvas from "../../components/AnnotatedWaveformCanvas";
 import LevelMeter from "../../components/LevelMeter";
 import "./SZAssessment.css";
 
@@ -306,9 +306,9 @@ const SZAssessment = () => {
           </div>
           <div className="navbar-right">
             <div className="nav-progress">
-              <span className="progress-label">Step 2 of 5</span>
+              <span className="progress-label">Step 3 of 6</span>
               <div className="progress-bar">
-                <div className="progress-fill" style={{ width: "40%" }} />
+                <div className="progress-fill" style={{ width: "50%" }} />
               </div>
             </div>
           </div>
@@ -374,10 +374,9 @@ const SZAssessment = () => {
 
             {/* Waveform Display */}
             <div className="card-waveform">
-              <WaveformCanvas
+              <AnnotatedWaveformCanvas
                 waveform={stateMap.s.waveform || []}
                 samplingRate={stateMap.s.samplingRate || 16000}
-                isRecording={stateMap.s.recording}
               />
             </div>
 
@@ -432,10 +431,9 @@ const SZAssessment = () => {
 
             {/* Waveform Display */}
             <div className="card-waveform">
-              <WaveformCanvas
+              <AnnotatedWaveformCanvas
                 waveform={stateMap.z.waveform || []}
                 samplingRate={stateMap.z.samplingRate || 16000}
-                isRecording={stateMap.z.recording}
               />
             </div>
 

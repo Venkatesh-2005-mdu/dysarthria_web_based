@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import WaveformCanvas from "../../components/WaveformCanvas";
+import AnnotatedWaveformCanvas from "../../components/AnnotatedWaveformCanvas";
 import "../Assessments/ArticulationScreener.css";
 
 // TAT (Test of Articulation in Tamil) - Complete word list from official TAT document
@@ -333,9 +333,9 @@ const ArticulationScreener = () => {
         </div>
         <div className="navbar-right">
           <div className="nav-progress">
-            <span className="progress-label">Step 5 of 5</span>
+            <span className="progress-label">Step 5 of 6</span>
             <div className="progress-bar">
-              <div className="progress-fill" style={{ width: "100%" }} />
+              <div className="progress-fill" style={{ width: "83.33%" }} />
             </div>
           </div>
         </div>
@@ -455,10 +455,9 @@ const ArticulationScreener = () => {
                   {/* Waveform Display */}
                   {recordingState[word.id]?.waveform && (
                     <div className="waveform-container-small">
-                      <WaveformCanvas
+                      <AnnotatedWaveformCanvas
                         waveform={recordingState[word.id].waveform}
                         samplingRate={recordingState[word.id].samplingRate}
-                        isRecording={recordingState[word.id].recording}
                       />
                     </div>
                   )}
