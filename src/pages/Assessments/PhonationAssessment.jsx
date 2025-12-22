@@ -50,6 +50,8 @@ const PhonationAssessment = () => {
   const waveformCanvasRefsRef = useRef({});
   const audioCaptureRef = useRef(null);
   const [timer, setTimer] = useState(0);
+  const audioPlayerRef = useRef({});  // Track audio elements for each vowel
+  const [playbackState, setPlaybackState] = useState({});  // { [itemId]: { currentTime, isPlaying } }
 
   // Reference ranges by patient type
   const mpdReferences = {
@@ -79,22 +81,25 @@ const PhonationAssessment = () => {
 
   /**
    * Upload audio blob to backend for analysis
+   * Sends decoded PCM float32 data for backend to convert to WAV with FFmpeg
    */
   const uploadToBackend = async (itemId, blob) => {
     try {
-      // Decode audio to get raw PCM data
+      // Decode audio to get raw PCM data (float32)
       const arrayBuffer = await blob.arrayBuffer();
       const ac = new (window.AudioContext || window.webkitAudioContext)();
       const decoded = await ac.decodeAudioData(arrayBuffer);
       const audioData = Array.from(decoded.getChannelData(0));
       const sampleRate = decoded.sampleRate;
 
+      // Send PCM float32 data to backend
+      // Backend will convert to WAV using FFmpeg
       const res = await fetch(`${API_BASE}/phonation/upload/${itemId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           vowel: itemId,
-          audio_data: audioData,
+          audio_data: audioData,  // float32 array
           sample_rate: sampleRate,
         }),
       });
@@ -103,14 +108,15 @@ const PhonationAssessment = () => {
 
       const response = await res.json();
 
-      // Save backend results
+      // Backend only returns metadata, NOT waveform
+      // Frontend waveform is already displayed and stays unchanged
       setStateMap((prev) => ({
         ...prev,
         [itemId]: {
           ...prev[itemId],
           backendDuration: response.duration_sec || response.duration,
-          waveform: response.waveform || [],
-          samplingRate: response.sampling_rate || 16000,
+          // Waveform stays from earlier analyzeAudioBlob() call
+          // DO NOT override waveform with backend response
         },
       }));
 
@@ -122,6 +128,7 @@ const PhonationAssessment = () => {
 
   /**
    * Analyze audio blob locally for waveform display
+   * Resample to 16kHz, maintain full resolution (no downsampling)
    */
   const analyzeAudioBlob = async (blob) => {
     try {
@@ -129,22 +136,33 @@ const PhonationAssessment = () => {
       const ac = new (window.AudioContext || window.webkitAudioContext)();
       const decoded = await ac.decodeAudioData(arrayBuffer);
       const data = decoded.getChannelData(0);
-      const duration = decoded.duration;
-      const sr = decoded.sampleRate;
+      const originalSr = decoded.sampleRate;
+      const targetSr = 16000;  // Always use 16kHz
 
-      // Downsample for display (max 2000 points)
-      const maxPoints = 2000;
-      const factor = Math.ceil(data.length / maxPoints);
-      const downsampled = [];
-      
-      for (let i = 0; i < data.length; i += factor) {
-        downsampled.push(data[i]);
+      // Resample to 16kHz if needed
+      let resampledData = data;
+      if (originalSr !== targetSr) {
+        const ratio = targetSr / originalSr;
+        const resampledLength = Math.floor(data.length * ratio);
+        resampledData = new Float32Array(resampledLength);
+        
+        // Linear interpolation resampling
+        for (let i = 0; i < resampledLength; i++) {
+          const srcIndex = i / ratio;
+          const srcIndexFloor = Math.floor(srcIndex);
+          const srcIndexCeil = Math.min(srcIndexFloor + 1, data.length - 1);
+          const fraction = srcIndex - srcIndexFloor;
+          resampledData[i] = data[srcIndexFloor] * (1 - fraction) + data[srcIndexCeil] * fraction;
+        }
       }
+
+      const duration = resampledData.length / targetSr;
+      console.log(`Original: ${decoded.duration}s @ ${originalSr}Hz, Resampled: ${duration.toFixed(2)}s @ ${targetSr}Hz, Samples: ${resampledData.length}`);
 
       return {
         duration: parseFloat(duration.toFixed(2)),
-        waveform: downsampled,
-        samplingRate: sr,
+        waveform: Array.from(resampledData),  // Full resolution, 16kHz resampled
+        samplingRate: targetSr,
       };
     } catch (e) {
       console.error("analyzeAudioBlob error", e);
@@ -187,11 +205,6 @@ const PhonationAssessment = () => {
     };
 
     mediaRecorderRef.current.onstop = async () => {
-      // Stop real-time capture
-      if (audioCaptureRef.current) {
-        audioCaptureRef.current.stop();
-      }
-
       const blob = new Blob(chunksRef.current, { type: "audio/webm" });
       const url = URL.createObjectURL(blob);
 
@@ -251,6 +264,17 @@ const PhonationAssessment = () => {
    * Stop recording
    */
   const stopRecording = () => {
+    // Clean up RealtimeAudioCapture to properly close AudioContext
+    if (audioCaptureRef.current) {
+      try {
+        audioCaptureRef.current.cleanup();
+        audioCaptureRef.current = null;
+      } catch (err) {
+        console.error("Error cleaning up audio capture:", err);
+      }
+    }
+    
+    // Stop media recorder
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
     }
@@ -291,20 +315,73 @@ const PhonationAssessment = () => {
   };
 
   /**
-   * Handle audio playback
+   * Handle audio playback with real-time cursor tracking
    */
   const handlePlay = async (id) => {
     const meta = stateMap[id];
     if (!meta?.audioUrl) return;
 
     const audio = new Audio(meta.audioUrl);
+    audioPlayerRef.current[id] = audio;
+    
     setStateMap((prev) => ({ ...prev, [id]: { ...prev[id], isPlaying: true } }));
+    setPlaybackState((prev) => ({ ...prev, [id]: { currentTime: 0, isPlaying: true } }));
+    
+    // Update playback time continuously
+    audio.ontimeupdate = () => {
+      setPlaybackState((prev) => ({
+        ...prev,
+        [id]: {
+          currentTime: audio.currentTime,
+          isPlaying: true,
+          duration: audio.duration
+        }
+      }));
+    };
     
     audio.onended = () => {
       setStateMap((prev) => ({ ...prev, [id]: { ...prev[id], isPlaying: false } }));
+      setPlaybackState((prev) => ({ ...prev, [id]: { currentTime: 0, isPlaying: false } }));
     };
     
     audio.play();
+  };
+
+  /**
+   * Handle pause/resume
+   */
+  const handlePauseResume = (id) => {
+    const audio = audioPlayerRef.current[id];
+    if (!audio) return;
+
+    if (audio.paused) {
+      audio.play();
+      setStateMap((prev) => ({ ...prev, [id]: { ...prev[id], isPlaying: true } }));
+      setPlaybackState((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], isPlaying: true }
+      }));
+    } else {
+      audio.pause();
+      setStateMap((prev) => ({ ...prev, [id]: { ...prev[id], isPlaying: false } }));
+      setPlaybackState((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], isPlaying: false }
+      }));
+    }
+  };
+
+  /**
+   * Stop audio playback
+   */
+  const handleStopAudio = (id) => {
+    const audio = audioPlayerRef.current[id];
+    if (!audio) return;
+
+    audio.pause();
+    audio.currentTime = 0;
+    setStateMap((prev) => ({ ...prev, [id]: { ...prev[id], isPlaying: false } }));
+    setPlaybackState((prev) => ({ ...prev, [id]: { currentTime: 0, isPlaying: false } }));
   };
 
   /**
@@ -513,8 +590,43 @@ const PhonationAssessment = () => {
                     waveform={stateMap[activeRecordingId]?.waveform || []}
                     samplingRate={stateMap[activeRecordingId]?.samplingRate || 16000}
                     isRecording={stateMap[activeRecordingId]?.recording}
+                    currentPlaybackTime={playbackState[activeRecordingId]?.currentTime || 0}
+                    duration={stateMap[activeRecordingId]?.duration || 0}
                   />
                 </div>
+
+                {/* Playback Controls (visible after recording) */}
+                {stateMap[activeRecordingId]?.duration > 0 && (
+                  <div className="playback-controls">
+                    <button
+                      className="btn-playback"
+                      onClick={() => handlePlay(activeRecordingId)}
+                      disabled={stateMap[activeRecordingId]?.isPlaying}
+                      title="Play audio"
+                    >
+                      ▶️ Play
+                    </button>
+                    <button
+                      className="btn-playback pause"
+                      onClick={() => handlePauseResume(activeRecordingId)}
+                      disabled={!stateMap[activeRecordingId]?.isPlaying}
+                      title="Pause/Resume audio"
+                    >
+                      {playbackState[activeRecordingId]?.isPlaying ? "⏸️ Pause" : "▶️ Resume"}
+                    </button>
+                    <button
+                      className="btn-playback stop"
+                      onClick={() => handleStopAudio(activeRecordingId)}
+                      disabled={!stateMap[activeRecordingId]?.isPlaying}
+                      title="Stop audio"
+                    >
+                      ⏹️ Stop
+                    </button>
+                    <span className="playback-time">
+                      {(playbackState[activeRecordingId]?.currentTime || 0).toFixed(2)}s / {stateMap[activeRecordingId]?.duration || 0}s
+                    </span>
+                  </div>
+                )}
 
                 {/* Save Options (visible after recording) */}
                 {stateMap[activeRecordingId]?.duration > 0 && (

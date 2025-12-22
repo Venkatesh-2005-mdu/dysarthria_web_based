@@ -12,6 +12,7 @@ import SZAssessment from "./pages/Assessments/SZAssessment";
 import RessonanceAndArticulationAssessment from "./pages/Assessments/RessonanceAndArticulationAssessment";
 import RateOfSpeechAssessment from "./pages/Assessments/RateOfSpeechAssessment";
 import ArticulationScreener from "./pages/Assessments/ArticulationScreener";
+import VoiceTestAssessment from "./pages/Assessments/VoiceTestAssessment";
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
         <Route path="/assess/resonance" element={<RessonanceAndArticulationAssessment />} />
         <Route path="/assess/rateofspeech" element={<RateOfSpeechAssessment />} />
         <Route path="/assess/articulation" element={<ArticulationScreener />} />
+        <Route path="/assess/voice" element={<VoiceTestAssessment />} />
 
       </Routes>
     </Router>

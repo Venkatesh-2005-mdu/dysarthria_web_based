@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wavesurfer Audio Recorder</title>
+
+  <!-- Wavesurfer.js CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.7.1/dist/wavesurfer.min.css"
+  />
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .recorder-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .recorder-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .recorder-header h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      font-weight: 700;
+    }
+
+    .recorder-header p {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    .recorder-content {
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .error-message {
+      padding: 1rem;
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      display: none;
+    }
+
+    .error-message.show {
+      display: flex;
+    }
+
+    .error-message p {
+      color: #991b1b;
+      font-weight: 500;
+      margin: 0;
+    }
+
+    .error-message button {
+      padding: 0.375rem 0.75rem;
+      background: #dc2626;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .error-message button:hover {
+      background: #b91c1c;
+    }
+
+    .recording-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: #f8fafc;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .recording-badge {
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.375rem 0.75rem;
+      background: #fecaca;
+      color: #991b1b;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      animation: pulse 1.5s infinite;
+    }
+
+    .recording-badge.show {
+      display: flex;
+    }
+
+    .recorded-badge {
+      display: none;
+      padding: 0.375rem 0.75rem;
+      background: #bbf7d0;
+      color: #166534;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .recorded-badge.show {
+      display: inline-block;
+    }
+
+    .timer {
+      font-family: "Monaco", "Courier New", monospace;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #dc2626;
+      min-width: 80px;
+      text-align: right;
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.7;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+
+    .waveform-container {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 1rem;
+      min-height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #wavesurfer {
+      width: 100%;
+    }
+
+    .mic-level-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .mic-level-container label {
+      font-weight: 600;
+      color: #475569;
+      font-size: 0.875rem;
+    }
+
+    .mic-level-bar {
+      width: 100%;
+      height: 12px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid #cbd5e1;
+    }
+
+    .mic-level-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981, #3b82f6, #ef4444);
+      transition: width 0.1s ease-out;
+      width: 0%;
+    }
+
+    .mic-level-container {
+      display: none;
+    }
+
+    .mic-level-container.show {
+      display: flex;
+    }
+
+    .recorder-controls {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      min-width: 120px;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-warning:hover:not(:disabled) {
+      background: #d97706;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 12px rgba(245, 158, 11, 0.4);
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: #dc2626;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 12px rgba(239, 68, 68, 0.4);
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+      color: white;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #4b5563;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 12px rgba(107, 114, 128, 0.4);
+    }
+
+    .playback-section {
+      display: none;
+      padding: 1.5rem;
+      background: #f8fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 6px;
+    }
+
+    .playback-section.show {
+      display: block;
+    }
+
+    .playback-section h4 {
+      margin: 0 0 1rem 0;
+      color: #1e293b;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .audio-player {
+      width: 100%;
+      margin-bottom: 1rem;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    .blob-info {
+      display: flex;
+      gap: 2rem;
+      font-size: 0.875rem;
+      color: #64748b;
+      flex-wrap: wrap;
+    }
+
+    .blob-info p {
+      margin: 0;
+    }
+
+    .blob-info strong {
+      color: #1e293b;
+      font-weight: 600;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .action-buttons .btn {
+      min-width: 100px;
+    }
+
+    /* Wavesurfer custom styling */
+    :root {
+      --ws-bar-color: #2178dc;
+      --ws-progress-color: #ef4444;
+      --ws-cursor-color: #ef4444;
+    }
+
+    @media (max-width: 640px) {
+      .recorder-header h1 {
+        font-size: 1.5rem;
+      }
+
+      .recorder-content {
+        padding: 1rem;
+        gap: 1rem;
+      }
+
+      .recording-status {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+
+      .timer {
+        min-width: auto;
+        text-align: left;
+      }
+
+      .recorder-controls,
+      .action-buttons {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+        min-width: unset;
+      }
+
+      .blob-info {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .error-message {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .error-message button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="recorder-card">
+      <div class="recorder-header">
+        <h1>🎤 Audio Recorder</h1>
+        <p>Record and visualize audio in real-time with wavesurfer.js</p>
+      </div>
+
+      <div class="recorder-content">
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message">
+          <p id="errorText"></p>
+          <button onclick="dismissError()">Dismiss</button>
+        </div>
+
+        <!-- Recording Status -->
+        <div class="recording-status">
+          <div>
+            <span id="recordingBadge" class="recording-badge">
+              <span>●</span>
+              <span>RECORDING</span>
+            </span>
+            <span id="recordedBadge" class="recorded-badge"> ✓ Recorded </span>
+          </div>
+          <div id="timer" class="timer">00:00</div>
+        </div>
+
+        <!-- Waveform Display -->
+        <div class="waveform-container">
+          <div id="wavesurfer"></div>
+        </div>
+
+        <!-- Microphone Level -->
+        <div id="micLevelContainer" class="mic-level-container">
+          <label>Microphone Level</label>
+          <div class="mic-level-bar">
+            <div id="micLevelFill" class="mic-level-fill"></div>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="recorder-controls">
+          <button id="startBtn" class="btn btn-primary" onclick="startRecording()">
+            Start Recording
+          </button>
+          <button
+            id="pauseBtn"
+            class="btn btn-warning"
+            onclick="pauseRecording()"
+            style="display: none"
+          >
+            Pause
+          </button>
+          <button
+            id="resumeBtn"
+            class="btn btn-warning"
+            onclick="resumeRecording()"
+            style="display: none"
+          >
+            Resume
+          </button>
+          <button
+            id="stopBtn"
+            class="btn btn-danger"
+            onclick="stopRecording()"
+            style="display: none"
+          >
+            Stop
+          </button>
+          <button
+            id="resetBtn"
+            class="btn btn-secondary"
+            onclick="resetRecorder()"
+            style="display: none"
+          >
+            Reset
+          </button>
+        </div>
+
+        <!-- Playback Section -->
+        <div id="playbackSection" class="playback-section">
+          <h4>Playback</h4>
+          <audio id="audioPlayer" class="audio-player" controls></audio>
+          <div class="blob-info">
+            <div>
+              <p>
+                <strong>File Size:</strong>
+                <span id="fileSize">0</span> KB
+              </p>
+            </div>
+            <div>
+              <p>
+                <strong>Duration:</strong>
+                <span id="duration">00:00</span>
+              </p>
+            </div>
+            <div>
+              <p>
+                <strong>Type:</strong>
+                <span id="fileType">audio/webm</span>
+              </p>
+            </div>
+          </div>
+          <div class="action-buttons">
+            <button class="btn btn-primary" onclick="downloadRecording()">
+              Download
+            </button>
+            <button class="btn btn-secondary" onclick="copyToClipboard()">
+              Copy Audio URL
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wavesurfer.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.7.1/dist/wavesurfer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7.7.1/dist/plugins/record.min.js"></script>
+
+  <script>
+    let wavesurfer = null;
+    let recordPlugin = null;
+    let mediaStream = null;
+    let recordingStartTime = 0;
+    let timerInterval = null;
+    let analyser = null;
+    let dataArray = null;
+    let animationId = null;
+    let recordedBlob = null;
+    let isPaused = false;
+
+    // Initialize wavesurfer on page load
+    document.addEventListener("DOMContentLoaded", initializeWavesurfer);
+
+    function initializeWavesurfer() {
+      wavesurfer = WaveSurfer.create({
+        container: "#wavesurfer",
+        waveColor: "#2178dc",
+        progressColor: "#ef4444",
+        cursorColor: "#ef4444",
+        barWidth: 2,
+        barGap: 1,
+        barRadius: 2,
+        height: 100,
+        normalize: true,
+        interact: false,
+        audioRate: 16000,
+      });
+
+      recordPlugin = wavesurfer.registerPlugin(RecordPlugin.create());
+
+      // Event listeners
+      recordPlugin.on("record-start", onRecordStart);
+      recordPlugin.on("record-pause", onRecordPause);
+      recordPlugin.on("record-resume", onRecordResume);
+      recordPlugin.on("record-stop", onRecordStop);
+      recordPlugin.on("record-data-available", onRecordDataAvailable);
+    }
+
+    function onRecordStart() {
+      console.log("Recording started");
+      recordingStartTime = Date.now();
+      isPaused = false;
+
+      // Update UI
+      document.getElementById("startBtn").style.display = "none";
+      document.getElementById("pauseBtn").style.display = "inline-block";
+      document.getElementById("resumeBtn").style.display = "none";
+      document.getElementById("stopBtn").style.display = "inline-block";
+      document.getElementById("resetBtn").style.display = "none";
+      document.getElementById("recordingBadge").classList.add("show");
+      document.getElementById("recordedBadge").classList.remove("show");
+      document.getElementById("micLevelContainer").classList.add("show");
+      document.getElementById("playbackSection").classList.remove("show");
+
+      // Start timer
+      timerInterval = setInterval(updateTimer, 100);
+
+      // Setup microphone monitoring
+      setupMicrophoneMonitoring();
+    }
+
+    function onRecordPause() {
+      console.log("Recording paused");
+      isPaused = true;
+      document.getElementById("pauseBtn").style.display = "none";
+      document.getElementById("resumeBtn").style.display = "inline-block";
+    }
+
+    function onRecordResume() {
+      console.log("Recording resumed");
+      isPaused = false;
+      document.getElementById("resumeBtn").style.display = "none";
+      document.getElementById("pauseBtn").style.display = "inline-block";
+    }
+
+    function onRecordStop(blob) {
+      console.log("Recording stopped, blob size:", blob.size);
+      recordedBlob = blob;
+
+      // Clear timer
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+
+      // Stop microphone monitoring
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+
+      // Update UI
+      document.getElementById("recordingBadge").classList.remove("show");
+      document.getElementById("recordedBadge").classList.add("show");
+      document.getElementById("startBtn").style.display = "inline-block";
+      document.getElementById("pauseBtn").style.display = "none";
+      document.getElementById("resumeBtn").style.display = "none";
+      document.getElementById("stopBtn").style.display = "none";
+      document.getElementById("resetBtn").style.display = "inline-block";
+      document.getElementById("micLevelContainer").classList.remove("show");
+      document.getElementById("playbackSection").classList.add("show");
+
+      // Display playback
+      displayPlayback(blob);
+
+      // Load recorded audio into wavesurfer for playback visualization
+      wavesurfer.loadBlob(blob);
+    }
+
+    function onRecordDataAvailable(data) {
+      // This is called periodically with audio data
+    }
+
+    async function startRecording() {
+      try {
+        clearError();
+
+        // Request microphone access
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            autoGainControl: true,
+            echoCancellation: true,
+            noiseSuppression: true,
+          },
+        });
+
+        // Start recording
+        await recordPlugin.startRecording(mediaStream);
+      } catch (err) {
+        console.error("Error accessing microphone:", err);
+        let errorMsg = err.name === "NotAllowedError"
+          ? "Microphone access denied. Please allow microphone access to record."
+          : `Error accessing microphone: ${err.message}`;
+        showError(errorMsg);
+      }
+    }
+
+    async function stopRecording() {
+      try {
+        if (recordPlugin) {
+          await recordPlugin.stopRecording();
+        }
+
+        // Stop microphone stream
+        if (mediaStream) {
+          mediaStream.getTracks().forEach((track) => track.stop());
+          mediaStream = null;
+        }
+      } catch (err) {
+        console.error("Error stopping recording:", err);
+        showError(`Error stopping recording: ${err.message}`);
+      }
+    }
+
+    async function pauseRecording() {
+      try {
+        if (recordPlugin && !isPaused) {
+          await recordPlugin.pauseRecording();
+        }
+      } catch (err) {
+        console.error("Error pausing recording:", err);
+        showError(`Error pausing recording: ${err.message}`);
+      }
+    }
+
+    async function resumeRecording() {
+      try {
+        if (recordPlugin && isPaused) {
+          await recordPlugin.resumeRecording();
+        }
+      } catch (err) {
+        console.error("Error resuming recording:", err);
+        showError(`Error resuming recording: ${err.message}`);
+      }
+    }
+
+    function resetRecorder() {
+      recordedBlob = null;
+      isPaused = false;
+      document.getElementById("timer").textContent = "00:00";
+      document.getElementById("startBtn").style.display = "inline-block";
+      document.getElementById("resetBtn").style.display = "none";
+      document.getElementById("playbackSection").classList.remove("show");
+      document.getElementById("recordedBadge").classList.remove("show");
+      wavesurfer.empty();
+      clearError();
+    }
+
+    function setupMicrophoneMonitoring() {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(mediaStream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser);
+
+        const bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+
+        const monitorLevel = () => {
+          analyser.getByteFrequencyData(dataArray);
+          const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+          const percentage = Math.min(100, (average / 128) * 100);
+          document.getElementById("micLevelFill").style.width = percentage + "%";
+          animationId = requestAnimationFrame(monitorLevel);
+        };
+        monitorLevel();
+      } catch (err) {
+        console.warn("Microphone monitoring not available:", err);
+      }
+    }
+
+    function updateTimer() {
+      if (!recordingStartTime) return;
+      const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      document.getElementById("timer").textContent =
+        String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
+    }
+
+    function displayPlayback(blob) {
+      const url = URL.createObjectURL(blob);
+      document.getElementById("audioPlayer").src = url;
+      document.getElementById("fileSize").textContent = (blob.size / 1024).toFixed(2);
+      document.getElementById("fileType").textContent = blob.type || "audio/webm";
+
+      // Update duration
+      const audio = new Audio(url);
+      audio.onloadedmetadata = () => {
+        const mins = Math.floor(audio.duration / 60);
+        const secs = Math.floor(audio.duration % 60);
+        document.getElementById("duration").textContent =
+          String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
+      };
+    }
+
+    function downloadRecording() {
+      if (!recordedBlob) return;
+      const url = URL.createObjectURL(recordedBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `recording-${new Date().getTime()}.webm`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function copyToClipboard() {
+      if (!recordedBlob) return;
+      const url = URL.createObjectURL(recordedBlob);
+      navigator.clipboard.writeText(url).then(() => {
+        alert("Audio URL copied to clipboard!");
+      });
+    }
+
+    function showError(message) {
+      document.getElementById("errorText").textContent = message;
+      document.getElementById("errorMessage").classList.add("show");
+    }
+
+    function clearError() {
+      document.getElementById("errorMessage").classList.remove("show");
+      document.getElementById("errorText").textContent = "";
+    }
+
+    function dismissError() {
+      clearError();
+    }
+  </script>
+</body>
+</html>

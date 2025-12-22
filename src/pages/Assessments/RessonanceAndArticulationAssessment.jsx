@@ -73,8 +73,8 @@ const RessonanceAndArticulationAssessment = () => {
   /**
    * Calculate resonance characteristics from audio:
    * - Nasal resonance (energy in nasal frequencies)
-   * - Spectral centroid (overall frequency content)
-   * - Harmonic-to-Noise Ratio (voice quality)
+   * - Oral resonance (energy in oral frequencies)
+   * - Spectrogram for visualization
    */
   const analyzeResonance = async (audioData, sampleRate) => {
     try {
@@ -94,15 +94,6 @@ const RessonanceAndArticulationAssessment = () => {
       // Resonance ratio (nasal vs oral)
       const resonanceRatio = nasalEnergy / (oralEnergy + 0.001); // Avoid division by zero
 
-      // Spectral centroid
-      let numerator = 0;
-      let denominator = 0;
-      for (let i = 0; i < fft.length; i++) {
-        numerator += i * fft[i];
-        denominator += fft[i];
-      }
-      const spectralCentroid = numerator / (denominator + 0.001);
-
       // Determine resonance type based on analysis
       let resonanceType = "Normal";
       let characteristics = [];
@@ -111,23 +102,23 @@ const RessonanceAndArticulationAssessment = () => {
         resonanceType = "Hypernasality Detected";
         characteristics.push("Elevated nasal energy");
       } else if (resonanceRatio < 0.3) {
-        resonanceType = "Hyponas ality Detected";
+        resonanceType = "Hyponasality Detected";
         characteristics.push("Reduced nasal energy");
+      } else {
+        resonanceType = "Balanced";
+        characteristics.push("Balanced nasal-oral resonance");
       }
 
-      if (spectralCentroid < 1500) {
-        characteristics.push("Lower frequency emphasis");
-      } else if (spectralCentroid > 3500) {
-        characteristics.push("Higher frequency emphasis");
-      }
+      // Generate simple spectrogram data
+      const spectrogramData = generateSimpleSpectrogram(audioData, sampleRate);
 
       return {
         resonanceType,
         resonanceRatio: parseFloat(resonanceRatio.toFixed(3)),
-        spectralCentroid: parseFloat(spectralCentroid.toFixed(0)),
         characteristics,
         nasalEnergy: parseFloat(nasalEnergy.toFixed(4)),
         oralEnergy: parseFloat(oralEnergy.toFixed(4)),
+        spectrogram_data: spectrogramData,
       };
     } catch (e) {
       console.error("Resonance analysis error:", e);
@@ -154,6 +145,84 @@ const RessonanceAndArticulationAssessment = () => {
     }
 
     return frequencies;
+  };
+
+  /**
+   * Generate simple spectrogram data from audio
+   * Creates frequency vs time representation
+   */
+  const generateSimpleSpectrogram = (audioData, sr) => {
+    try {
+      const frameSize = Math.floor(0.025 * sr); // 25ms frames
+      const hopSize = Math.floor(0.010 * sr);   // 10ms hop
+      const nFrames = Math.floor((audioData.length - frameSize) / hopSize) + 1;
+
+      // Limit to reasonable number of frames for visualization
+      const maxFrames = 100;
+      const frameStep = Math.max(1, Math.floor(nFrames / maxFrames));
+      const displayFrames = Math.ceil(nFrames / frameStep);
+
+      const spectrogram = [];
+      const times = [];
+      let frameIdx = 0;
+
+      for (let i = 0; i < nFrames; i += frameStep) {
+        const start = i * hopSize;
+        const end = Math.min(start + frameSize, audioData.length);
+        const frame = audioData.slice(start, end);
+
+        // Apply Hamming window
+        const windowed = frame.map((x, idx) => {
+          const w = 0.54 - 0.46 * Math.cos((2 * Math.PI * idx) / (frameSize - 1));
+          return x * w;
+        });
+
+        // Compute FFT magnitude (simplified)
+        const spectrum = [];
+        const fftSize = 256;
+        for (let k = 0; k < fftSize / 2; k++) {
+          let real = 0;
+          let imag = 0;
+          for (let n = 0; n < windowed.length; n++) {
+            const angle = (-2 * Math.PI * k * n) / fftSize;
+            real += windowed[n] * Math.cos(angle);
+            imag += windowed[n] * Math.sin(angle);
+          }
+          const magnitude = Math.sqrt(real * real + imag * imag);
+          const dB = 20 * Math.log10(Math.max(magnitude, 1e-10));
+          spectrum.push(dB);
+        }
+
+        spectrogram.push(spectrum);
+        times.push((i * hopSize) / sr);
+        frameIdx++;
+      }
+
+      // Transpose for easier visualization
+      const transposed = [];
+      if (spectrogram.length > 0) {
+        const freqBins = spectrogram[0].length;
+        for (let freq = 0; freq < freqBins; freq++) {
+          const freqCol = spectrogram.map(frame => frame[freq]);
+          transposed.push(freqCol);
+        }
+      }
+
+      // Generate frequency array (0 to sr/2)
+      const frequencies = [];
+      for (let i = 0; i < transposed.length; i++) {
+        frequencies.push((i / transposed.length) * (sr / 2));
+      }
+
+      return {
+        spectrogram: transposed,
+        frequencies,
+        times,
+      };
+    } catch (e) {
+      console.error("Spectrogram generation error:", e);
+      return null;
+    }
   };
 
   // ============ AUDIO BLOB ANALYSIS ============
@@ -271,6 +340,96 @@ const RessonanceAndArticulationAssessment = () => {
       }
     };
   }, []);
+
+  // Render spectrogram when metrics update
+  useEffect(() => {
+    if (resonanceRecording.metrics && resonanceRecording.metrics.spectrogram_data) {
+      // Small delay to ensure canvas is rendered
+      setTimeout(() => {
+        renderSpectrogram(resonanceRecording.metrics);
+      }, 100);
+    }
+  }, [resonanceRecording.metrics]);
+
+  /**
+   * Render spectrogram visualization on canvas
+   * Uses data from metrics (spectrogram array, frequencies, times)
+   */
+  const renderSpectrogram = (metrics) => {
+    if (!metrics.spectrogram_data) return;
+
+    const canvas = document.getElementById('resonance-spectrogram');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const spec = metrics.spectrogram_data.spectrogram;
+    const freqs = metrics.spectrogram_data.frequencies;
+    const times = metrics.spectrogram_data.times;
+
+    if (!spec || spec.length === 0) return;
+
+    // Set canvas size
+    canvas.width = 800;
+    canvas.height = 300;
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const imgData = ctx.createImageData(width, height);
+
+    // Colormap function: magnitude (dB) to RGB
+    const getColor = (dB) => {
+      // Normalize dB to 0-1 range (assuming -60 to 0 dB range)
+      const normalized = Math.max(0, Math.min(1, (dB + 60) / 60));
+      
+      // Magma colormap approximation
+      let r, g, b;
+      if (normalized < 0.33) {
+        r = Math.round(normalized * 3 * 50);
+        g = 0;
+        b = Math.round(150);
+      } else if (normalized < 0.66) {
+        r = Math.round(255);
+        g = Math.round((normalized - 0.33) * 3 * 150);
+        b = Math.round(150 - (normalized - 0.33) * 3 * 100);
+      } else {
+        r = Math.round(255);
+        g = Math.round(150 + (normalized - 0.66) * 3 * 105);
+        b = Math.round(50 + (normalized - 0.66) * 3 * 205);
+      }
+      return [r, g, b, 255];
+    };
+
+    // Fill canvas with spectrogram data
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        // Map canvas coordinates to spectrogram data
+        const specIdx = Math.floor(x / width * spec.length);
+        const freqIdx = Math.floor(y / height * spec[0].length);
+
+        if (specIdx < spec.length && freqIdx < spec[0].length) {
+          const dB = spec[specIdx][freqIdx];
+          const [r, g, b, a] = getColor(dB);
+          const pixelIdx = (y * width + x) * 4;
+          imgData.data[pixelIdx] = r;
+          imgData.data[pixelIdx + 1] = g;
+          imgData.data[pixelIdx + 2] = b;
+          imgData.data[pixelIdx + 3] = a;
+        }
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+
+    // Add labels
+    ctx.fillStyle = 'white';
+    ctx.font = '12px Arial';
+    ctx.fillText('Time (s)', width - 50, height - 5);
+    ctx.save();
+    ctx.translate(10, height / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('Frequency (Hz)', 0, 0);
+    ctx.restore();
+  };
 
   // ============ RESONANCE RECORDING ============
   const startResonanceRecording = async () => {
@@ -719,14 +878,26 @@ const RessonanceAndArticulationAssessment = () => {
                     <span className="metric-value">{resonanceRecording.metrics.resonanceRatio}</span>
                   </div>
                   <div className="metric-item">
-                    <label>Spectral Centroid:</label>
-                    <span className="metric-value">{resonanceRecording.metrics.spectralCentroid} Hz</span>
-                  </div>
-                  <div className="metric-item">
                     <label>Nasal Energy:</label>
                     <span className="metric-value">{resonanceRecording.metrics.nasalEnergy}</span>
                   </div>
+                  <div className="metric-item">
+                    <label>Oral Energy:</label>
+                    <span className="metric-value">{resonanceRecording.metrics.oralEnergy}</span>
+                  </div>
                 </div>
+
+                {/* Spectrogram Visualization */}
+                {resonanceRecording.metrics.spectrogram_data && (
+                  <div className="spectrogram-container">
+                    <h4>Voice Spectrogram</h4>
+                    <canvas 
+                      id="resonance-spectrogram"
+                      style={{width: '100%', height: 'auto', border: '1px solid #ccc', marginTop: '10px'}}
+                    />
+                  </div>
+                )}
+
                 {resonanceRecording.metrics.characteristics.length > 0 && (
                   <div className="characteristics">
                     <label>Characteristics:</label>
