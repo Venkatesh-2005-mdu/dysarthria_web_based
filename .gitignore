@@ -12,6 +12,22 @@ dist
 dist-ssr
 *.local
 
+# Python virtual environments
+venv/
+backend/venv/
+backend-express/node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
