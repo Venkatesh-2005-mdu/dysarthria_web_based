@@ -1,0 +1,100 @@
+.wavesurfer-recorder {
+  padding: 20px;
+  background: #f8f9fa;
+  border: 2px dashed #667eea;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.recording-active {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.recording-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1em;
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.recording-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #dc3545;
+  animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.timer {
+  font-size: 2.5em;
+  font-weight: bold;
+  color: #667eea;
+  font-family: 'Courier New', monospace;
+}
+
+.button-group {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.btn-record,
+.btn-stop,
+.btn-cancel {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1em;
+  transition: all 0.3s ease;
+}
+
+.btn-record {
+  background-color: #667eea;
+  color: white;
+}
+
+.btn-record:hover {
+  background-color: #5568d3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-stop {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-stop:hover {
+  background-color: #218838;
+}
+
+.btn-cancel {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-cancel:hover {
+  background-color: #5a6268;
+}
+
+.max-duration-info {
+  margin-top: 15px;
+  font-size: 0.9em;
+  color: #666;
+}

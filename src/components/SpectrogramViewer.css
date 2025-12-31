@@ -1,0 +1,33 @@
+.spectrogram-container {
+  width: 100%;
+  position: relative;
+}
+
+.spectrogram-canvas {
+  border: 2px solid #667eea;
+  border-radius: 4px;
+  background: white;
+  display: block;
+  margin: 10px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.spectrogram-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 0.9em;
+  color: #666;
+  user-select: none;
+}
+
+.freq-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.time-label {
+  margin-top: 5px;
+}

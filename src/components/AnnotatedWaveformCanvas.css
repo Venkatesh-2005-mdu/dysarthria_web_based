@@ -1,0 +1,17 @@
+.annotated-waveform-container {
+  width: 100%;
+}
+
+.annotated-waveform-canvas {
+  border: 2px solid #667eea;
+  border-radius: 4px;
+  background: white;
+  display: block;
+  margin: 10px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.annotated-waveform-canvas:hover {
+  box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+}
