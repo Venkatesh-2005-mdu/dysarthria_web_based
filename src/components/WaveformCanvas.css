@@ -1,0 +1,7 @@
+.waveform-canvas {
+  border: 2px solid #e9ecef;
+  border-radius: 4px;
+  background: white;
+  display: block;
+  margin: 10px 0;
+}

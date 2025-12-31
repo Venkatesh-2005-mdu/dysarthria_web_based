@@ -1,0 +1,128 @@
+.respiratory-assessment {
+  background: white;
+  border-radius: 8px;
+  padding: 30px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 700px;
+  margin: 20px auto;
+}
+
+.assessment-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.assessment-header h2 {
+  color: #333;
+  margin: 0;
+  font-size: 1.8em;
+}
+
+.assessment-header p {
+  color: #666;
+  margin: 10px 0 0 0;
+}
+
+.assessment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.form-section {
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 25px;
+}
+
+.form-section:last-of-type {
+  border-bottom: none;
+}
+
+.form-section h3 {
+  color: #333;
+  margin: 0 0 20px 0;
+  font-size: 1.2em;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1em;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-group small {
+  display: block;
+  color: #999;
+  font-size: 0.85em;
+  margin-top: 5px;
+}
+
+.btn-primary {
+  padding: 15px 40px;
+  font-size: 1em;
+  background-color: #667eea;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background-color: #5568d3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.results-section {
+  background: #f0f3ff;
+  border-radius: 6px;
+  padding: 20px;
+  text-align: center;
+}
+
+.results-section h3 {
+  color: #28a745;
+  margin: 0;
+  font-size: 1.3em;
+}
+
+.saved-data {
+  background: white;
+  border-radius: 4px;
+  padding: 15px;
+  margin-top: 15px;
+  text-align: left;
+}
+
+.saved-data p {
+  margin: 10px 0;
+  color: #333;
+}
+
+.saved-data strong {
+  color: #667eea;
+}
