@@ -1,0 +1,168 @@
+.speech-tasks {
+  background: white;
+  border-radius: 8px;
+  padding: 30px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 900px;
+  margin: 20px auto;
+}
+
+.tasks-header h2 {
+  color: #333;
+  margin-top: 0;
+}
+
+.progress {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+}
+
+.progress p {
+  margin: 0 0 10px 0;
+  color: #666;
+  font-weight: 500;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #28a745;
+  transition: width 0.3s ease;
+}
+
+.current-task {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.task-number {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  margin-bottom: 15px;
+}
+
+.current-task h3 {
+  margin: 15px 0;
+  font-size: 1.5em;
+}
+
+.task-instruction {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  border-radius: 4px;
+  margin: 15px 0;
+  line-height: 1.6;
+}
+
+.task-instruction p {
+  margin: 0;
+}
+
+.task-example {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  border-radius: 4px;
+  margin: 15px 0;
+}
+
+.task-example strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.example-text {
+  margin: 0;
+  font-style: italic;
+  font-size: 1.05em;
+}
+
+.task-controls {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 30px 0;
+}
+
+.btn-skip,
+.btn-complete {
+  padding: 12px 30px;
+  font-size: 1em;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-skip {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid white;
+}
+
+.btn-skip:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-complete {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-complete:hover {
+  background-color: #218838;
+}
+
+.task-list {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 6px;
+  margin-top: 30px;
+}
+
+.task-list h4 {
+  margin-top: 0;
+  color: #333;
+}
+
+.task-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.task-item {
+  padding: 10px;
+  margin: 8px 0;
+  border-left: 4px solid #e9ecef;
+  color: #666;
+  transition: all 0.3s ease;
+}
+
+.task-item.current {
+  border-left-color: #667eea;
+  background-color: #f0f3ff;
+  color: #333;
+  font-weight: 500;
+}
+
+.task-item.completed {
+  border-left-color: #28a745;
+  background-color: #f0fdf4;
+  color: #333;
+}

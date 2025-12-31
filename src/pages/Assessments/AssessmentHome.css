@@ -1,0 +1,204 @@
+.assessment-home {
+  padding: 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+}
+
+.assessment-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.assessment-header h1 {
+  font-size: 2.5em;
+  color: #333;
+  margin: 0;
+}
+
+.assessment-header p {
+  color: #666;
+  font-size: 1.1em;
+}
+
+.assessment-layout {
+  display: grid;
+  grid-template-columns: 30% 70%;
+  gap: 30px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.patient-selector {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  height: fit-content;
+  position: sticky;
+  top: 20px;
+}
+
+.patient-selector h2 {
+  color: #333;
+  margin-top: 0;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 10px;
+}
+
+.patient-list {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.patient-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 8px;
+  border: 2px solid #eee;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.patient-item:hover {
+  border-color: #007bff;
+  background-color: #f8f9fa;
+}
+
+.patient-item.selected {
+  background-color: #e7f3ff;
+  border-color: #007bff;
+}
+
+.patient-info h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1em;
+}
+
+.patient-info p {
+  margin: 2px 0;
+  color: #666;
+  font-size: 0.9em;
+}
+
+.patient-id {
+  color: #999;
+}
+
+.patient-diagnosis {
+  color: #ff6b6b;
+  font-weight: 500;
+}
+
+.selection-indicator {
+  font-size: 1.5em;
+  color: #ddd;
+  transition: all 0.3s ease;
+}
+
+.selection-indicator.active {
+  color: #28a745;
+}
+
+.no-patients {
+  text-align: center;
+  padding: 30px;
+  color: #666;
+}
+
+.assessment-grid {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.assessment-grid h2 {
+  color: #333;
+  margin-top: 0;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 10px;
+}
+
+.selected-patient-info {
+  color: #28a745;
+  font-weight: 500;
+  margin: 10px 0;
+}
+
+.assessment-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.assessment-card {
+  background: white;
+  border: 2px solid #eee;
+  border-top: 4px solid #007bff;
+  border-radius: 8px;
+  padding: 15px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.assessment-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.assessment-icon {
+  font-size: 2.5em;
+  margin-bottom: 10px;
+}
+
+.assessment-card h3 {
+  margin: 10px 0;
+  color: #333;
+  font-size: 1.1em;
+}
+
+.assessment-card p {
+  color: #666;
+  font-size: 0.9em;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.start-btn {
+  width: 100%;
+  padding: 10px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.start-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.start-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1024px) {
+  .assessment-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-selector {
+    position: static;
+  }
+
+  .assessment-cards {
+    grid-template-columns: 1fr;
+  }
+}
