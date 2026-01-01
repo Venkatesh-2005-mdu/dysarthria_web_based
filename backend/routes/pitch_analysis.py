@@ -16,6 +16,7 @@ from core.pitch_utils import (
     extract_shimmer_and_jitter_from_float_array,
     extract_average_intensity_from_float_array,
     extract_hnr_and_f0_from_float_array,
+    extract_mpfr_from_float_array,
 )
 
 router = APIRouter()
@@ -56,6 +57,14 @@ class IntensityResponse(BaseModel):
 class HNRAndF0Response(BaseModel):
     hnr_db: float | None
     f0_hz: float | None
+    error: str | None = None
+
+
+class MPFRResponse(BaseModel):
+    min_f0: float
+    max_f0: float
+    range_hz: float
+    range_semitones: float
     error: str | None = None
 
 
@@ -231,6 +240,48 @@ async def analyze_hnr_f0(request: PitchAnalysisRequest):
         )
     except Exception as e:
         print(f"Error in HNR-F0 analysis endpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/mpfr/analyze")
+async def analyze_mpfr(request: PitchAnalysisRequest):
+    """
+    Analyze Maximum Phonation Frequency Range (MPFR) from audio data.
+    
+    MPFR measures the range of frequencies a person can phonante.
+    Particularly useful for glide tests.
+    
+    Accepts:
+        audio_data: List of float32 samples
+        sample_rate: Sample rate in Hz
+        
+    Returns:
+        min_f0: Lowest voiced frequency (Hz)
+        max_f0: Highest voiced frequency (Hz)
+        range_hz: Range in Hz
+        range_semitones: Range in semitones (clinical standard)
+    """
+    try:
+        print(f"[MPFR] Request received. Audio data length: {len(request.audio_data)}, Sample rate: {request.sample_rate}")
+        
+        # Convert list to numpy array
+        audio_array = np.array(request.audio_data, dtype=np.float32)
+        
+        # Extract MPFR with wide pitch ceiling (800 Hz) for high glides
+        result = extract_mpfr_from_float_array(audio_array, request.sample_rate, pitch_ceiling=800.0)
+        
+        print(f"[MPFR] Analysis complete. Result: {result}")
+        
+        return MPFRResponse(
+            min_f0=result.get("min_f0", 0),
+            max_f0=result.get("max_f0", 0),
+            range_hz=result.get("range_hz", 0),
+            range_semitones=result.get("range_semitones", 0),
+            error=result.get("error"),
+        )
+    except Exception as e:
+        print(f"Error in MPFR analysis endpoint: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

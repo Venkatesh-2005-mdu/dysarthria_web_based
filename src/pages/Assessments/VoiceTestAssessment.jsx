@@ -42,6 +42,7 @@ const VoiceTestAssessment = () => {
         shimmerJitterMetrics: null,
         intensityMetrics: null,
         hnrF0Metrics: null,
+        mpfrMetrics: null,
       };
       return acc;
     }, {})
@@ -359,6 +360,47 @@ const VoiceTestAssessment = () => {
           }));
         } catch (err) {
           console.error("Error analyzing shimmer, jitter, intensity, or HNR/F0:", err);
+        }
+      }
+
+      // For Glide test, analyze MPFR (Maximum Phonation Frequency Range)
+      if (itemId === "glide") {
+        try {
+          const arrayBuffer = await blob.arrayBuffer();
+          const ac = new (window.AudioContext || window.webkitAudioContext)();
+          const decoded = await ac.decodeAudioData(arrayBuffer);
+          const audioData = Array.from(decoded.getChannelData(0));
+          const sampleRate = decoded.sampleRate;
+
+          // Analyze MPFR
+          console.log(`[VoiceTest] Analyzing MPFR for: ${itemId}`);
+          const mpfrResponse = await fetch(`${API_BASE}/api/mpfr/analyze`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ audio_data: audioData, sample_rate: sampleRate }),
+          });
+
+          console.log(`[VoiceTest] MPFR Response status: ${mpfrResponse.status}`);
+          if (mpfrResponse.ok) {
+            const mpfrData = await mpfrResponse.json();
+            console.log(`[VoiceTest] MPFR analysis result:`, mpfrData);
+            console.log(`[VoiceTest] Min F0: ${mpfrData.min_f0}, Max F0: ${mpfrData.max_f0}, Range (Hz): ${mpfrData.range_hz}, Range (Semitones): ${mpfrData.range_semitones}`);
+            
+            setVoiceStateMap((prev) => ({
+              ...prev,
+              [itemId]: {
+                ...prev[itemId],
+                mpfrMetrics: {
+                  min_f0: mpfrData.min_f0,
+                  max_f0: mpfrData.max_f0,
+                  range_hz: mpfrData.range_hz,
+                  range_semitones: mpfrData.range_semitones,
+                },
+              },
+            }));
+          }
+        } catch (err) {
+          console.error("Error analyzing MPFR:", err);
         }
       }
 
@@ -835,6 +877,51 @@ const VoiceTestAssessment = () => {
                         <span className="metric-label">Voiced Frames</span>
                         <span className="metric-value">
                           {voiceStateMap[activeRecordingId]?.shimmerJitterMetrics?.voiced_frames || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* MPFR Metrics (for Glide test) */}
+                {activeRecordingId === "glide" && voiceStateMap[activeRecordingId]?.mpfrMetrics && (
+                  <div className="mpfr-metrics-container">
+                    <h3 className="metrics-title">Phonation Frequency Range (MPFR)</h3>
+                    <div className="metrics-grid">
+                      <div className="metric-item">
+                        <span className="metric-label">Minimum Frequency (Min F0)</span>
+                        <span className="metric-value">
+                          {voiceStateMap[activeRecordingId]?.mpfrMetrics?.min_f0 
+                            ? `${voiceStateMap[activeRecordingId].mpfrMetrics.min_f0.toFixed(2)} Hz`
+                            : "N/A"
+                          }
+                        </span>
+                      </div>
+                      <div className="metric-item">
+                        <span className="metric-label">Maximum Frequency (Max F0)</span>
+                        <span className="metric-value">
+                          {voiceStateMap[activeRecordingId]?.mpfrMetrics?.max_f0 
+                            ? `${voiceStateMap[activeRecordingId].mpfrMetrics.max_f0.toFixed(2)} Hz`
+                            : "N/A"
+                          }
+                        </span>
+                      </div>
+                      <div className="metric-item">
+                        <span className="metric-label">Range (Hz)</span>
+                        <span className="metric-value">
+                          {voiceStateMap[activeRecordingId]?.mpfrMetrics?.range_hz 
+                            ? `${voiceStateMap[activeRecordingId].mpfrMetrics.range_hz.toFixed(2)} Hz`
+                            : "N/A"
+                          }
+                        </span>
+                      </div>
+                      <div className="metric-item">
+                        <span className="metric-label">Range (Semitones)</span>
+                        <span className="metric-value">
+                          {voiceStateMap[activeRecordingId]?.mpfrMetrics?.range_semitones 
+                            ? `${voiceStateMap[activeRecordingId].mpfrMetrics.range_semitones.toFixed(2)} st`
+                            : "N/A"
+                          }
                         </span>
                       </div>
                     </div>

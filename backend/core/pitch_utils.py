@@ -9,6 +9,65 @@ import soundfile as sf
 import librosa
 
 
+def calculate_mpfr(pitch_vals):
+    """
+    Calculate Maximum Phonation Frequency Range (MPFR).
+    
+    MPFR is the range of frequencies a person can phonante from lowest to highest.
+    This is particularly useful for glide tests.
+    
+    Args:
+        pitch_vals: Array of F0 values (Hz) from pitch extraction
+        
+    Returns:
+        dict with:
+            - min_f0: Lowest voiced frequency (Hz)
+            - max_f0: Highest voiced frequency (Hz)
+            - range_hz: Range in Hz (max_f0 - min_f0)
+            - range_semitones: Range in semitones (standard clinical measure)
+    """
+    try:
+        # 1. Filter out zeros/NaNs (unvoiced frames)
+        voiced_f0 = pitch_vals[pitch_vals > 0]
+        
+        if len(voiced_f0) == 0:
+            return {
+                "min_f0": 0,
+                "max_f0": 0,
+                "range_hz": 0,
+                "range_semitones": 0
+            }
+        
+        # 2. Identify Lowest and Highest F0
+        min_f0 = float(np.min(voiced_f0))
+        max_f0 = float(np.max(voiced_f0))
+        
+        # 3. Calculate Range in Hz
+        range_hz = max_f0 - min_f0
+        
+        # 4. Calculate Range in Semitones (standard clinical measure for MPFR)
+        # Formula: 12 * log2(high / low)
+        if min_f0 > 0:
+            range_semitones = 12 * np.log2(max_f0 / min_f0)
+        else:
+            range_semitones = 0
+        
+        return {
+            "min_f0": round(min_f0, 2),
+            "max_f0": round(max_f0, 2),
+            "range_hz": round(range_hz, 2),
+            "range_semitones": round(range_semitones, 2)
+        }
+    except Exception as e:
+        print(f"Error calculating MPFR: {e}")
+        return {
+            "min_f0": 0,
+            "max_f0": 0,
+            "range_hz": 0,
+            "range_semitones": 0
+        }
+
+
 def extract_pitch_and_overall_f0(wav_path):
     """
     Extract instantaneous pitch (F0) and
@@ -119,9 +178,99 @@ def extract_pitch_from_float_array(audio_data: np.ndarray, sample_rate: int):
         }
 
 
+def extract_mpfr(wav_path, pitch_ceiling=800.0):
+    """
+    Extract Maximum Phonation Frequency Range (MPFR) from audio file.
+    
+    Uses a wider pitch ceiling (default 800 Hz) to capture high-frequency glides.
+    
+    Args:
+        wav_path: Path to WAV file
+        pitch_ceiling: Upper frequency limit for pitch detection (Hz), default 800
+        
+    Returns:
+        dict with:
+            - min_f0: Lowest voiced frequency (Hz)
+            - max_f0: Highest voiced frequency (Hz)
+            - range_hz: Range in Hz
+            - range_semitones: Range in semitones
+    """
+    try:
+        # Load audio into Praat
+        snd = parselmouth.Sound(wav_path)
+        
+        # Extract pitch with wide ceiling for glides
+        pitch = snd.to_pitch(
+            pitch_floor=75.0,
+            pitch_ceiling=pitch_ceiling
+        )
+        
+        # Get pitch values
+        pitch_vals = pitch.selected_array["frequency"]
+        pitch_vals = np.nan_to_num(pitch_vals)
+        
+        # Calculate MPFR
+        mpfr_data = calculate_mpfr(pitch_vals)
+        
+        return mpfr_data
+    except Exception as e:
+        print(f"Error extracting MPFR: {e}")
+        return {
+            "min_f0": 0,
+            "max_f0": 0,
+            "range_hz": 0,
+            "range_semitones": 0,
+            "error": str(e),
+        }
+
+
+def extract_mpfr_from_float_array(audio_data: np.ndarray, sample_rate: int, pitch_ceiling=800.0):
+    """
+    Extract MPFR from float32 audio data array.
+    
+    Args:
+        audio_data: Float32 numpy array of audio samples
+        sample_rate: Sample rate in Hz
+        pitch_ceiling: Upper frequency limit for pitch detection (Hz), default 800
+        
+    Returns:
+        dict with MPFR metrics (see extract_mpfr)
+    """
+    try:
+        # Create temp WAV file from audio data
+        temp_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+        temp_path = temp_file.name
+        temp_file.close()
+        
+        # Write audio to temp file
+        sf.write(temp_path, audio_data, sample_rate)
+        
+        # Extract MPFR from temp file
+        result = extract_mpfr(temp_path, pitch_ceiling=pitch_ceiling)
+        
+        # Clean up temp file
+        import os
+        os.unlink(temp_path)
+        
+        return result
+    except Exception as e:
+        print(f"Error extracting MPFR from array: {e}")
+        return {
+            "min_f0": 0,
+            "max_f0": 0,
+            "range_hz": 0,
+            "range_semitones": 0,
+            "error": str(e),
+        }
+
+
 def extract_shimmer_and_jitter(wav_path):
     """
     Extract local shimmer and jitter from audio using Praat's PointProcess.
+    
+    IMPORTANT: Period bounds are calculated from pitch floor/ceiling to ensure
+    only voiced frames are analyzed. Non-voiced frames are automatically excluded
+    by the PointProcess (periodic, cc) algorithm.
     
     Args:
         wav_path: Path to WAV file
@@ -133,41 +282,57 @@ def extract_shimmer_and_jitter(wav_path):
             - voiced_frames: Count of voiced frames
     """
     try:
+        # Pitch analysis parameters
+        pitch_floor = 75.0    # Hz - minimum expected pitch
+        pitch_ceiling = 600.0  # Hz - maximum expected pitch
+        
         # Load audio into Praat
         snd = parselmouth.Sound(wav_path)
         
         # Create PointProcess for periodic analysis
+        # "To PointProcess (periodic, cc)" ONLY extracts voiced pulses
+        # Non-voiced frames are automatically excluded
         point_process = parselmouth.praat.call(
             snd,
             "To PointProcess (periodic, cc)",
-            75.0,     # pitch floor (Hz)
-            600.0     # pitch ceiling (Hz)
+            pitch_floor,
+            pitch_ceiling
         )
         
+        # Calculate period bounds from pitch parameters
+        # Period = 1 / Frequency
+        # Max period corresponds to pitch floor (lowest frequency = longest period)
+        # Min period corresponds to pitch ceiling (highest frequency = shortest period)
+        max_period = 1.3 / pitch_floor   # Allow 1.3x flexibility for tracking
+        min_period = 0.75 / pitch_ceiling  # Allow 0.75x flexibility for tracking
+        
         # Extract local jitter (in seconds, converted to percentage)
+        # Only analyzes the voiced pulses identified by PointProcess
         jitter_local = parselmouth.praat.call(
             point_process,
             "Get jitter (local)",
-            0,        # start time (0 = whole signal)
-            0,        # end time (0 = whole signal)
-            0.0001,   # min period (s)
-            0.02,     # max period (s)
-            1.3       # max period factor
+            0,           # start time (0 = whole signal)
+            0,           # end time (0 = whole signal)
+            min_period,  # min period (s) - calculated from pitch_ceiling
+            max_period,  # max period (s) - calculated from pitch_floor
+            1.3          # max period factor
         )
         
         # Extract local shimmer (linear, converted to percentage)
+        # Only analyzes the voiced pulses identified by PointProcess
         shimmer_local = parselmouth.praat.call(
             [snd, point_process],
             "Get shimmer (local)",
-            0,        # start time
-            0,        # end time
-            0.0001,   # min period
-            0.02,     # max period
-            1.3,      # max period factor
-            1.6       # max amplitude factor
+            0,           # start time
+            0,           # end time
+            min_period,  # min period - calculated from pitch_ceiling
+            max_period,  # max period - calculated from pitch_floor
+            1.3,         # max period factor
+            1.6          # max amplitude factor
         )
         
-        # Count voiced frames
+        # Count voiced frames (pitch pulses)
+        # This is the number of detected pitch points in the PointProcess
         num_points = parselmouth.praat.call(point_process, "Get number of points")
         
         return {
